@@ -1,0 +1,97 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <script type="text/javascript" src="lib/pulsebar.js"></script>
+    <script type="text/javascript" src="lib/signalr.min.js"></script>
+    <script src="lib/jquery-3.2.1.js" crossorigin="anonymous"></script>
+    <title>Pulse Stream</title>
+    <style>
+
+        canvas {
+            cursor: crosshair;
+            border: 1px solid #000000;
+        }
+
+        div#pulsebar {
+            height: 100px;
+            float: left;
+            width: 100%;
+            border: 1px solid #ccc;
+        }
+
+        .inner-bar {
+            position: relative;
+            background: green;
+        }
+
+        .pulse-meter {
+            width: 50px;
+            margin: 0px auto;
+        }
+
+        div#pulsevalue {
+            width: 100%;
+            margin: 0px auto;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="pulse-meter">
+        <div id="pulsebar">
+        </div>
+        <div id="pulsevalue"></div>
+    </div>
+    <script>
+        var pulsevalue = document.getElementById('pulsevalue');
+
+        var barHeight = 100;
+
+        var barSelector = document.getElementById("pulsebar");
+        initBar(barSelector, barHeight);
+
+        var connection = new signalR.HubConnectionBuilder()
+            .withUrl('/pulse')
+            .build();
+
+        connection.start().then(function () {
+            console.log("Connection Started");
+            connection.invoke("StartPulse").then(function (state) {
+                startStreaming();
+            });
+        });
+
+        function startStreaming() {
+            connection.stream("StreamPulse").subscribe({
+                close: false,
+                next: displayPulse,
+                error: function (err) {
+                    logger.log(err);
+                }
+            });
+        }
+
+        displayPulse = function (data) {
+            //console.log(data);
+            switch (data.pulseType) {
+                case "LiveUser":
+                    liveUsersPulseChange(data);
+                    break;
+            }
+        }
+        var liveUsersPulseChange = function (pulse) {
+            pulsevalue.innerText = pulse.value;
+            updatePulsebar(pulse.value);
+        };
+        var updatePulsebar = function (pulsepoint) {
+            setBarValue(barSelector, pulsepoint);
+            // $(barSelector).css('height', pulsepoint);
+            // $(barSelector).css('top', barHeight - pulsepoint);
+        };
+    </script>
+</body>
+
+</html>
